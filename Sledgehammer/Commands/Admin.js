@@ -48,10 +48,30 @@ let Utils = {
 			});
 		});
 	},
-	Clean: (message, Count) => {
+	Clean: (message, Count, Flags) => {
 		return new Promise((resolve, reject) => {
 			let i = 0;
 			message.channel.fetchMessages({limit: Count}).then((messages) => {
+				if(Flags){
+					messages = messages.filter((ms) => {
+						for each (let Flag in Flags) {
+							if(Flag.match(/-c="(.+)"/) && ms.content.includes(Flag.match(/-c="(.+)"/)[1])){
+								return true;
+							}
+						}
+						if(Flags.includes("-a") && ms.attachments.size > 0){
+							return true;
+						}else if(Flags.includes("-e") && ms.edits.length > 0){
+							return true;
+						}else if(Flags.includes("-w") && ms.embeds.length > 0){
+							return true;
+						}else if(Flags.includes("-m") && ms.mentions.users.size > 0){
+							return true;
+						}else{
+							return false;
+						}
+					})
+				}
 				messages.map((ms) => {
 					ms.delete().then(() => {
 						i++;
@@ -152,10 +172,14 @@ module.exports = {
 			if(Args.length >= 1){
 				purgeCount = parseInt(Args[0]) || 10;
 			}
+			let flags = null;
+			if(Args.length >= 2){
+				flags = Args.slice(1);
+			}
 			if(message.channel.permissionsFor(message.author).hasPermission("MANAGE_MESSAGES")){
 				if(message.channel.permissionsFor(Sledgehammer.user).hasPermission("MANAGE_MESSAGES")){
 					let toSend = "";
-					Utils.Clean(message, purgeCount).then((Purged) => {
+					Utils.Clean(message, purgeCount, flags).then((Purged) => {
 						toSend = `Purged ${Purged.formatNumber()} messages in ${message.channel}.`;
 						message.channel.sendMessage(toSend);
 					});
@@ -168,6 +192,6 @@ module.exports = {
 		},
 		Cooldown: 5,
 		Description: "Purges messages",
-		Usage: "`[amount]`"
+		Usage: "`[amount] [-a|-e|-w|-m|-c=\"catching text\"]`"
 	}
 }
